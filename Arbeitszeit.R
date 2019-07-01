@@ -42,6 +42,19 @@ d_distinct %>%
             overtime = round(sum_workinghours - workingtime_todo, 2)) %>% 
   arrange(week_number) -> d_results
 
+# Total Sum of Overtime
+d_distinct %>% 
+  arrange(date) %>% 
+  group_by(date(date)) %>% 
+  tidyr::spread(status, date) %>% 
+  mutate(working_hours = as.duration(interval(entered, exited))) %>% 
+  ungroup() %>% 
+  summarise(sum_workinghours = sum(as.numeric(working_hours), na.rm = TRUE) / 3600,
+         sum_workingdays = n()) -> total_overtime
+
+overtime_total <- total_overtime$sum_workinghours - total_overtime$sum_workingdays * 7.3
+total_number_workingdays <- total_overtime$sum_workingdays
+
 # Building text blocks from result
 d_results %>% 
   filter(week_number == max(d_results$week_number)) %>% 
@@ -56,7 +69,9 @@ over_under_time <- if_else(this_week_overtime >= 0, "zu viel", "zu wenig")
 
 text_result <- paste0("Du hast in der vergangenen Arbeitswoche bei <b>",
        d_text_information$no_workingdays, " Arbeitstagen (", round(d_text_information$workingtime_todo, 2), 
-       " Sollstunden)</b> insgesamt <b>", round(abs(this_week_overtime), 2), " Stunden ", over_under_time, "</b> gearbeitet.")
+       " Sollstunden)</b> insgesamt <b>", round(abs(this_week_overtime), 2), " Stunden ", over_under_time, "</b> gearbeitet.<br>",
+       "Die Gesamtüberstundenzahl seit Januar 2019 beträgt: ", round(overtime_total, 2), " Stunden. <br>Bei einer Mittagspause von 45 Minuten pro Tag wären das immer noch <b>",
+       round(overtime_total - total_overtime$sum_workingdays * 0.75, 2), " Stunden</b>.")
 
 # Vizualizing results
 d_results %>% 
